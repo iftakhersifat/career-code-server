@@ -31,6 +31,7 @@ async function run() {
 
     // job api
     const jobsCollection = client.db("careerCode").collection("jobs");
+    const applicationsCollection = client.db("careerCode").collection("applications");
     
     // get data
     app.get("/jobs", async(req, res)=>{
@@ -44,6 +45,14 @@ async function run() {
     const resultShow = await jobsCollection.findOne(query)
     res.send(resultShow)
     })
+
+    // job application related apis
+    app.post('/applications', async (req, res) => {
+    const newJob = req.body;
+    const result = await applicationsCollection.insertOne(newJob)
+    res.send(result)
+    });
+
 
 
 
