@@ -53,6 +53,17 @@ async function run() {
     res.send(result)
     });
 
+    // get applications
+    app.get("/applications", async(req, res)=>{
+      const email = req.query.email
+      const query={
+        applicant : email
+      }
+      const result=await  applicationsCollection.find(query).toArray()
+      res.send(result)
+
+    })
+
 
 
 
