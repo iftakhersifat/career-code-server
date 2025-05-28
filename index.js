@@ -35,7 +35,12 @@ async function run() {
     
     // get data
     app.get("/jobs", async(req, res)=>{
-        const result =await jobsCollection.find().toArray()
+      const email=req.query.email
+      let query={}
+      if(email){
+        query={hr_email: email}
+      }
+        const result =await jobsCollection.find(query).toArray()
         res.send(result)
     })
     // single id
@@ -52,6 +57,14 @@ async function run() {
     const add = await jobsCollection.insertOne(newJob)
     res.send(add)
     });
+
+    // // find job by hr email
+    // app.get('/jobsByEmail', async (req, res) => {
+    // const email = req.query.email
+    // const query={hr_email: email}
+    // const result=await jobsCollection.find(query).toArray()
+    // res.send(result)
+    // });
 
 
 
