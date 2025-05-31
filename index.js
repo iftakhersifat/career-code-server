@@ -2,17 +2,44 @@ const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const cors = require('cors');
+const cookieParser=require("cookie-parser")
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 3000;
 
 
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:5173"],
+  credentials: true //allow cookies
+}));
 app.use(express.json());
+app.use(cookieParser())
+
+const logger=(req, res, next)=>{
+  console.log("logger")
+  next();
+}
+const verifyToken=(req, res, next)=>{
+  const token=req?.cookies?.token
+  console.log("token", token)
+  if(!token){
+    return res.status(401).send({message: 'Unauthorized'})
+  }
+  jwt.verify(token, process.env.JWT_SECRET, (error, decoded)=>{
+    if(error){
+      return res.status(401).send({message: 'Unauthorized Access'})
+    }
+    req.decoded=decoded
+    next()
+  })
+  
+}
 
 console.log(process.env.DB_USER)
 console.log(process.env.DB_PASSWORD)
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.mojyanw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -32,6 +59,21 @@ async function run() {
     // job api
     const jobsCollection = client.db("careerCode").collection("jobs");
     const applicationsCollection = client.db("careerCode").collection("applications");
+
+    // jwt token related api
+   app.post("/jwt", async(req, res)=>{
+    const {email} =req.body
+    const userInfo ={email}
+    const token=jwt.sign(userInfo, process.env.JWT_SECRET, {expiresIn: '1h'})
+
+    // set token in the cookies
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false
+    })
+
+    res.send({ token })
+   })
     
     // get data
     app.get("/jobs", async(req, res)=>{
@@ -82,17 +124,42 @@ async function run() {
     // application by id
     app.get("/applications/:id", async(req, res)=>{
     const id= req.params.id;
+    
     const query = {id: id}
     const resultShow = await applicationsCollection.find(query).toArray()
     res.send(resultShow)
     })
 
+    // particular for patch
+    
+app.put("/applications/:id", async (req, res) => {
+    const id = req.params.id;
+    const newStatus = req.body.status;
+
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: {
+            status: newStatus
+        }
+    };
+
+    const result = await applicationsCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+
+
 
 
 
     // get applications
-    app.get("/applications", async(req, res)=>{
+    app.get("/applications", logger, verifyToken, async(req, res)=>{
       const email = req.query.email
+
+      if(email !==  req.decoded.email){
+        return res.status(403).send({message: "forbidden"})
+      }
+      
       const query={
         applicant : email
       }
